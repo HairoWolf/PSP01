@@ -7,6 +7,7 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
+//Puedo o no?
 public class E8ServidorChat extends JFrame implements ActionListener {
 
 	private static final long serialVersionUID = 1L;
