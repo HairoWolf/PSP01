@@ -4,8 +4,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.Scanner;
 
 /**
  * @author Javier Tienda González
@@ -22,13 +20,13 @@ public class CallCenterClient {
     private String mensajeARecibir;
     private DataOutputStream salida;
     private DataInputStream entrada;
+    private static CallCenterClient myClient;
 
     public static void main(String[] args) {
-        CallCenterClient myClient = new CallCenterClient();
+        myClient = new CallCenterClient();
         GMethods.println("Iniciando el cliente");
         try {
             myClient.initClient();
-            myClient.ejecutar();
         }
         catch (RuntimeException e) {
             GMethods.printError("El servidor esta cerrado");
@@ -43,24 +41,29 @@ public class CallCenterClient {
             cliente = new Socket("localhost", PUERTO);
             entrada = new DataInputStream(cliente.getInputStream());
             salida = new DataOutputStream(cliente.getOutputStream());
-            leerTexto();
-            escribirTexto();
-            leerTexto();
-            int numConsulta = GMethods.keyBInt();
-            salida.writeInt(numConsulta);
+            if(readMessageServerAvailable()){
+                writeMessage();
+                readMessage();
+                int numConsulta = GMethods.keyBInt();
+                salida.writeInt(numConsulta);
+                myClient.runClient();
+            }
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void ejecutar() {
+    /**
+     * Ejecuta el bucle de consulta del cliente
+     */
+    public void runClient() {
         boolean loop = true;
         while (loop) {
             try {
-                leerTexto();
-                GMethods.println("Que respondes?");
-                escribirTexto();
+                readMessage();
+                GMethods.println("Escribe mensaje");
+                writeMessage();
                 if (mensajeAEnviar.equalsIgnoreCase("salir")) {
                     loop = false;
                 }
@@ -73,22 +76,46 @@ public class CallCenterClient {
             }
         }
         try {
-            leerTexto();
+            readMessage();
             cliente.close();// cierre del socket
             GMethods.println("Te has desconectado");
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
-
-    }// fin de ejecutar
-
-    private void leerTexto() throws IOException {
-        mensajeARecibir = entrada.readUTF();
-        System.out.println( mensajeARecibir);
     }
 
-    private void escribirTexto() throws IOException {
+    /**
+     * Lee los mensajes que le envia el servidor
+     * @throws IOException
+     */
+    private void readMessage() throws IOException {
+        mensajeARecibir = entrada.readUTF();
+        System.out.println(mensajeARecibir);
+    }
+
+    /**
+     * Lee el primer mensaje y identifica si el servidor esta completo o no
+     * @return boolean que confirma si puede crear una comunicacion con el server
+     * @throws IOException
+     */
+    private boolean readMessageServerAvailable() throws IOException {
+        boolean serverAvailable;
+        mensajeARecibir = entrada.readUTF();
+        System.out.println(mensajeARecibir);
+        if(mensajeARecibir.equals("El servidor esta lleno")){
+            serverAvailable = false;
+        }
+        else{
+            serverAvailable = true;
+        }
+        return serverAvailable;
+    }
+
+    /**
+     * Escribe el texto que va a enviar al servidor
+     * @throws IOException
+     */
+    private void writeMessage() throws IOException {
         mensajeAEnviar = GMethods.keyBString();
         salida.writeUTF(mensajeAEnviar);
     }
